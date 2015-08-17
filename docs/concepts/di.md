@@ -59,19 +59,19 @@ foundHandler
 errorHandler
 :   Callable invoked if application error. The callable **MUST** return an instance of `\Psr\Http\Message\ResponseInterface` and accept three arguments:
 
-1. `\Psr\Http\Message\RequestInterface`
+1. `\Psr\Http\Message\ServerRequestInterface`
 2. `\Psr\Http\Message\ResponseInterface`
 3. `\Exception`
 
 notFoundHandler
 :   Callable invoked if the current HTTP request URI does not match an application route. The callable **MUST** return an instance of `\Psr\Http\Message\ResponseInterface` and accept two arguments:
 
-1. `\Psr\Http\Message\RequestInterface`
+1. `\Psr\Http\Message\ServerRequestInterface`
 2. `\Psr\Http\Message\ResponseInterface`
 
 notAllowedHandler
 :   Callable invoked if an application route matches the current HTTP request path but not its method. The callable **MUST** return an instance of `\Psr\Http\Message\ResponseInterface` and accept three arguments:
 
-1. `\Psr\Http\Message\RequestInterface`
+1. `\Psr\Http\Message\ServerRequestInterface`
 2. `\Psr\Http\Message\ResponseInterface`
 3. Array of allowed HTTP methods

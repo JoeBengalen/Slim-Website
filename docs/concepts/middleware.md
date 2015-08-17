@@ -6,7 +6,7 @@ title: Middleware
 
 A middleware is a _callable_ that accepts three arguments: 
 
-1. `\Psr\Http\Message\RequestInterface` - The request object
+1. `\Psr\Http\Message\ServerRequestInterface` - The request object
 2. `\Psr\Http\Message\ResponseInterface` - The response object
 3. `callable` - The next middleware callable
  

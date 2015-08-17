@@ -4,7 +4,7 @@ title: PSR7 and Value Objects
 
 ## PSR-7
 
-Slim supports [PSR-7](https://github.com/php-fig/http-message) interfaces for its HTTP message objects. A Slim application container's `request` and `response` services **MUST** return an instance of `\Psr\Http\Message\RequestInterface` and `\Psr\Http\Message\ResponseInterface`, respectively.
+Slim supports [PSR-7](https://github.com/php-fig/http-message) interfaces for its HTTP message objects. A Slim application container's `request` and `response` services **MUST** return an instance of `\Psr\Http\Message\ServerRequestInterface` and `\Psr\Http\Message\ResponseInterface`, respectively.
 
 Slim provides a built-in PSR-7 implementation. However, you are free to substitute a third-party implementation. Simply override the Slim application container's `request` and `response` services and return an object that implements the appropriate PSR-7 interface.
 
