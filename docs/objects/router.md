@@ -2,7 +2,7 @@
 title: Router
 ---
 
-The Slim Framework's router is built on top of the [nikic/fastroute](https://github.com/nikic/FastRoute) component, and it is remarkably fast and stable. 
+The Slim Framework's router is built on top of the [nikic/fastroute](https://github.com/nikic/FastRoute) component, and it is remarkably fast and stable.
 
 ## How to create routes
 
@@ -98,6 +98,27 @@ $app->patch('/books/{id}', function ($request, $response, $args) {
 });
 {% endhighlight %}
 
+### Any Route
+
+You can add a route that handles all HTTP request methods with the Slim application's `any()` method. It accepts two arguments:
+
+1. The route pattern (with optional named placeholders)
+2. The route callback
+
+{% highlight php %}
+$app = new \Slim\App();
+$app->any('/books/[{id}]', function ($request, $response, $args) {
+    // Apply changes to books or book identified by $args['id'] if specified.
+    // To check which method is used: $request->getMethod();
+});
+{% endhighlight %}
+
+Note that the second parameter is a callback. You could specify a Class (which need a `__invoke()` implementation) instead of a Closure. You can then do the mapping somewhere else:
+
+{% highlight php %}
+$app->any('/user', 'MyRestfulController');
+{% endhighlight %}
+
 ### Custom Route
 
 You can add a route that handles multiple HTTP request methods with the Slim application's `map()` method. It accepts three arguments:
@@ -132,20 +153,20 @@ There are two ways you can write content to the HTTP response. First, you can si
 
 ### Closure binding
 
-If you use a `Closure` instance as the route callback, the closure's state is bound to the `\Slim\App` instance. This means you can access the `\Slim\App` object from inside the route callback with `$this`. Because the `\Slim\App` itself composes the DI container, you can quickly access any services registered with the DI container from inside the Closure callback like this:
+If you use a `Closure` instance as the route callback, the closure's state is bound to the `Container` instance. This means you will have access to the DI container instance _inside_ of the Closure via the `$this` keyword:
 
 {% highlight php %}
 $app = new \Slim\App();
 $app->get('/hello/{name}', function ($request, $response, $args) {
     // Use app HTTP cookie service
-    $this->cookies->set('name', [
-        'name' => $args['name'],
+    $this->get('cookies')->set('name', [
+        'value' => $args['name'],
         'expires' => '7 days'
     ]);
 });
 {% endhighlight %}
 
-### Route strategies
+## Route strategies
 
 The route callback signature is determined by a route strategy. By default, Slim expects route callbacks to accept the request, response, and an array of route placeholder arguments. This is called the RequestResponse strategy. However, you can change the expected route callback signature by simply using a different strategy. As an example, Slim provides an alternative strategy called RequestResponseArgs that accepts request and response, plus each route placeholder as a separate argument. Here is an example of using this alternative strategy; simply replace the `foundHandler` dependency provided by the default `\Slim\Container`:
 
@@ -178,6 +199,40 @@ $app->get('/hello/{name}', function ($request, $response, $args) {
 });
 {% endhighlight %}
 
+### Optional segments
+
+To make a section optional, simply wrap in square brackets:
+
+{% highlight php %}
+$app->get('/users[/{id}]', function ($request, $response, $args) {
+    // reponds to both `/users` and `/users/123`
+    // but not to `/users/`
+});
+{% endhighlight %}
+
+
+Multiple optional parameters are supported by nesting:
+
+{% highlight php %}
+$app->get('/news[/{year}[/{month}]]', function ($request, $response, $args) {
+    // reponds to `/news`, `/news/2016` and `/news/2016/03`
+});
+{% endhighlight %}
+
+For "Unlimited" optional parameters, you can do this:
+
+{% highlight php %}
+$app->get('/news[/{params:.*}]', function ($request, $response, $args) {
+    $params = explode('/', $request->getAttribute('params'));
+
+    // $params is an array of all the optional segments
+});
+{% endhighlight %}
+
+In this example, a URI of `/news/2016/03/20` would result in the `$params` array
+containing three elements: `['2016', '03', '20']`.
+
+
 ### Regular expression matching
 
 By default the placeholders are written inside `{}` and can accept any
@@ -204,7 +259,7 @@ $app->get('/hello/{name}', function ($request, $response, $args) {
 You can generate a URL for this named route with the application router's `pathFor()`  method.
 
 {% highlight php %}
-echo $app['router']->pathFor('hello', [
+echo $app->getContainer()->get('router')->pathFor('hello', [
     'name' => 'Josh'
 ]);
 // Outputs "/hello/Josh"
@@ -218,14 +273,15 @@ The router's `pathFor()` method accepts two arguments:
 ## Route groups
 
 To help organize routes into logical groups, the `\Slim\App` also provides a `group()` method. Each group's route pattern is prepended to the routes or groups contained within it, and any placeholder arguments in the group pattern are ultimately made available to the nested routes:
- 
+
 {% highlight php %}
 $app = new \Slim\App();
 $app->group('/users/{id:[0-9]+}', function () {
-    this->map(['GET', 'DELETE', 'PATCH', 'PUT'], '', function ($request, $response, $args) {
+    $this->map(['GET', 'DELETE', 'PATCH', 'PUT'], '', function ($request, $response, $args) {
         // Find, delete, patch or replace user identified by $args['id']
     })->setName('user');
     $this->get('/reset-password', function ($request, $response, $args) {
+        // Route for /users/{id:[0-9]+}/reset-password
         // Reset the password for user identified by $args['id']
     })->setName('user-password-reset');
 });
@@ -236,3 +292,80 @@ Note inside the group closure, `$this` is used instead of `$app`. Slim binds the
 ## Route middleware
 
 You can also attach middleware to any route or route group. [Learn more](/docs/concepts/middleware.html).
+
+## Container Resolution
+
+You are not limited to defining a function for your routes. In Slim there are a few different ways to define your route action functions.
+
+In addition to a function, you may use:
+ - An invokable class
+ - `Class:method`
+ 
+This function is enabled by Slim's Callable Resolver Class. It translates a string entry into a function call.
+Example:
+
+{% highlight php %}
+$app->get('/home', '\HomeController:home');
+{% endhighlight %}
+
+In this code above we are defining a `/home` route and telling Slim to execute the `home()` method on the `\HomeController` class.
+
+Slim first looks for an entry of `\HomeController` in the container, if it's found it will use that instance otherwise it will call it's constructor with the container as the first argument. Once an instance of the class is created it will then call the specified method using whatever Strategy you have defined.
+ 
+Alternatively, you can use an invokable class, such as:
+
+{% highlight php %}
+class MyAction {
+   protected $ci;
+   //Constructor
+   public function __construct(ContainerInterface $ci) {
+       $this->ci = $ci;
+   }
+   
+   public function __invoke($request, $response, $args) {
+        //your code
+        //to access items in the container... $this->ci->get('');
+   }
+}
+{% endhighlight %}
+
+You can use this class like so.
+
+{% highlight php %}
+$app->get('/home', '\MyAction');
+{% endhighlight %}
+
+In a more traditional MVC appraoch you can construct controllers with many actions instead of an invokable class which only handles one action.
+
+{% highlight php %}
+class MyController {
+   protected $ci;
+   //Constructor
+   public function __construct(ContainerInterface $ci) {
+       $this->ci = $ci;
+   }
+   
+   public function method1($request, $response, $args) {
+        //your code
+        //to access items in the container... $this->ci->get('');
+   }
+   
+   public function method2($request, $response, $args) {
+        //your code
+        //to access items in the container... $this->ci->get('');
+   }
+      
+   public function method3($request, $response, $args) {
+        //your code
+        //to access items in the container... $this->ci->get('');
+   }
+}
+{% endhighlight %}
+
+You can use your controller methods like so.
+
+{% highlight php %}
+$app->get('/method1', '\MyController:method1');
+$app->get('/method2', '\MyController:method2');
+$app->get('/method3', '\MyController:method3');
+{% endhighlight %}
